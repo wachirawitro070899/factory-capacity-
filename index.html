@@ -18,7 +18,7 @@
     <div class="brand">CAPACITY SYSTEM<small>Factory Capacity Management</small></div>
     <div class="nav">
       <button class="active" data-view="dashboard">Dashboard</button>
-      <button data-view="departments">10 Departments</button>
+      <button data-view="departments">Departments</button>
       <button data-view="capacity">Capacity Database</button>
       <button data-view="parts">Part Summary</button>
       <button data-view="search">Search / Compare</button>
@@ -45,7 +45,7 @@
         <div class="table-wrap"><table class="table" style="min-width:900px"><thead><tr><th>Part No.</th><th>Part Name</th><th>Department</th><th>Processes</th><th>Steps</th><th>Machines Used</th><th style="text-align:right">Total CT (sec)</th></tr></thead><tbody id="dashboardPartBody"></tbody></table></div>
       </div>
       <div class="card">
-        <div class="section-head"><h2>ภาพรวม 10 แผนก</h2><button class="btn light" onclick="showView('departments')">ดูทั้งหมด</button></div>
+        <div class="section-head"><h2>ภาพรวมแผนก</h2><button class="btn light" onclick="showView('departments')">ดูทั้งหมด</button></div>
         <div class="dept-grid" id="deptCards"></div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -55,7 +55,13 @@
     </section>
 
     <section id="departments" class="view hidden">
-      <div class="card"><div class="section-head"><h2>Departments</h2><span style="font-size:12px;color:#98a2b3">สามารถเปลี่ยนชื่อแผนกภายหลังได้ใน Master Data</span></div><div class="dept-grid" id="deptCards2"></div></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-head"><div><h2>Department Master</h2><div style="font-size:12px;color:#98a2b3;margin-top:4px">เพิ่ม/ลบแผนกที่เก็บใน Google Sheet: Department_Master</div></div></div>
+        <div class="toolbar" style="margin-bottom:0"><input id="newDeptName" placeholder="ชื่อแผนกใหม่" style="min-width:260px"><button class="btn primary" id="addDeptBtn">+ เพิ่มแผนก</button><span id="deptActionMsg" style="font-size:12px;color:#667085;align-self:center"></span></div>
+        <div class="table-wrap" style="margin-top:14px"><table class="table" style="min-width:650px"><thead><tr><th>#</th><th>Department</th><th>Parts</th><th>Processes</th><th>Steps</th><th>Machines</th><th></th></tr></thead><tbody id="deptMasterBody"></tbody></table></div>
+      </div>
+      <div class="card" style="margin-bottom:14px"><div class="section-head"><h2>Department Overview</h2><span style="font-size:12px;color:#98a2b3">เลือกแผนกเพื่อดู Capacity Database</span></div><div class="dept-grid" id="deptCards2"></div></div>
+      <div id="departmentPartGroups"></div>
     </section>
 
     <section id="capacity" class="view hidden">
@@ -138,6 +144,23 @@ function loadData(){
   script.src=APPS_SCRIPT_URL+'?action=capacity&callback='+encodeURIComponent(cb)+'&_='+Date.now();
   document.body.appendChild(script);
 }
+function apiJsonp(action, params={}){
+  return new Promise((resolve,reject)=>{
+    if(!isApiConfigured()){reject(new Error('ยังไม่ได้ตั้งค่า APPS_SCRIPT_URL'));return}
+    const cb='capacityWrite_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const script=document.createElement('script');
+    const timer=setTimeout(()=>{cleanup();reject(new Error('Google Apps Script ไม่ตอบกลับ'))},15000);
+    function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
+    window[cb]=data=>{cleanup();data&&data.ok!==false?resolve(data):reject(new Error((data&&data.error)||'API Error'))};
+    script.onerror=()=>{cleanup();reject(new Error('โหลด Apps Script API ไม่สำเร็จ'))};
+    const qs=new URLSearchParams({action,callback:cb,_:Date.now().toString(),...params});
+    script.src=APPS_SCRIPT_URL+'?'+qs.toString();document.body.appendChild(script);
+  });
+}
+function getAdminKey(){let key=sessionStorage.getItem('capacityAdminKey')||'';if(!key){key=prompt('กรอก Admin Key สำหรับแก้ไข Department Master')||'';if(key)sessionStorage.setItem('capacityAdminKey',key)}return key}
+async function addDepartment(){const input=document.getElementById('newDeptName'),name=(input.value||'').trim();if(!name)return;const key=getAdminKey();if(!key)return;setDeptAction('กำลังเพิ่มแผนก...');try{await apiJsonp('addDepartment',{name,key});input.value='';setDeptAction('เพิ่มแผนกแล้ว',true);await loadData()}catch(e){setDeptAction(e.message,false)}}
+async function deleteDepartment(name){if(!confirm('ลบแผนก "'+name+'" ออกจาก Department Master?'))return;const key=getAdminKey();if(!key)return;setDeptAction('กำลังลบแผนก...');try{await apiJsonp('deleteDepartment',{name,key});setDeptAction('ลบแผนกแล้ว',true);await loadData()}catch(e){setDeptAction(e.message,false)}}
+function setDeptAction(msg,ok){const el=document.getElementById('deptActionMsg');if(el){el.textContent=msg||'';el.style.color=ok===true?'#15803d':ok===false?'#b91c1c':'#667085'}}
 function capHour(r){const ct=+r.ct||0,out=+r.outputCycle||1,eff=(+r.eff||0)/100;return ct>0?(3600/ct)*out*(eff||1):0}
 function capShift(r){return capHour(r)*(+r.hours||8)}
 function capDay(r){return capShift(r)*(+r.shifts||2)}
@@ -146,6 +169,19 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function num(v){const n=parseFloat(v);return Number.isFinite(n)?n:0}
 function populateDepartments(){['filterDept','partSummaryDept','dashboardDept'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML='<option value="">ทุกแผนก</option>'+departments.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');if(departments.includes(cur))el.value=cur})}
 function renderDeptCards(target){const host=document.getElementById(target);if(!host)return;host.innerHTML=departments.map(d=>{const rows=records.filter(r=>r.department===d);const p=new Set(rows.map(r=>r.process).filter(Boolean)).size;const m=new Set(rows.map(r=>r.machine).filter(Boolean)).size;const pct=Math.min(100,rows.length*5);return `<div class="card dept" data-dept="${esc(d)}"><div class="name">${esc(d)}</div><div class="meta">${p} Process • ${rows.length} Steps/Records • ${m} Machines</div><div class="progress"><span style="width:${pct}%"></span></div></div>`}).join('');host.querySelectorAll('.dept').forEach(x=>x.onclick=()=>openDept(x.dataset.dept))}
+function renderDepartmentMaster(){
+  const body=document.getElementById('deptMasterBody');if(!body)return;
+  body.innerHTML=departments.length?departments.map((d,i)=>{const rows=records.filter(r=>r.department===d),parts=new Set(rows.map(r=>r.partNo).filter(Boolean)).size,procs=new Set(rows.map(r=>r.process).filter(Boolean)).size,machines=new Set(rows.map(r=>r.machine).filter(Boolean)).size;return `<tr><td>${i+1}</td><td><b>${esc(d)}</b></td><td>${parts}</td><td>${procs}</td><td>${rows.length}</td><td>${machines}</td><td style="text-align:right"><button class="btn light" style="padding:6px 9px" onclick="openDept('${String(d).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">ดู</button> <button class="btn" style="padding:6px 9px;background:#fee2e2;color:#b91c1c" onclick="deleteDepartment('${String(d).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">ลบ</button></td></tr>`}).join(''):`<tr><td colspan="7" class="empty">ยังไม่มีแผนกใน Department_Master</td></tr>`;
+}
+function renderDepartmentPartGroups(){
+  const host=document.getElementById('departmentPartGroups');if(!host)return;
+  host.innerHTML=departments.map(d=>{const rows=records.filter(r=>r.department===d);if(!rows.length)return `<div class="card" style="margin-bottom:14px"><div class="section-head"><h2>${esc(d)}</h2><span style="font-size:12px;color:#98a2b3">ยังไม่มี Part</span></div><div class="empty">เพิ่มข้อมูลแผนกนี้ใน Capacity_Data แล้วกด Refresh Data</div></div>`;
+    const partMap=new Map();rows.forEach(r=>{const k=(r.partNo||'(No Part No.)').trim();if(!partMap.has(k))partMap.set(k,{partNo:k,partName:r.partName||'',rows:[]});partMap.get(k).rows.push(r)});
+    const partRows=[...partMap.values()].sort((a,b)=>a.partNo.localeCompare(b.partNo,undefined,{numeric:true})).map(g=>{const procs=[...new Set(g.rows.map(r=>r.process).filter(Boolean))],machines=[...new Set(g.rows.map(r=>r.machine).filter(Boolean))],total=g.rows.reduce((a,r)=>a+num(r.ct),0);return `<tr class="dept-part-row" data-dept="${esc(d)}" data-part="${esc(g.partNo)}" style="cursor:pointer"><td><b>${esc(g.partNo)}</b></td><td>${esc(g.partName||'-')}</td><td>${esc(procs.join(' → ')||'-')}</td><td>${g.rows.length}</td><td>${esc(machines.join(', ')||'-')}</td><td style="text-align:right;font-weight:800;color:#1d4ed8">${total.toLocaleString(undefined,{maximumFractionDigits:2})}</td></tr>`}).join('');
+    return `<div class="card" style="margin-bottom:14px"><div class="section-head"><div><h2>${esc(d)}</h2><div style="font-size:12px;color:#98a2b3;margin-top:4px">${partMap.size} Part • ${rows.length} Step</div></div><button class="btn light" onclick="openDept('${String(d).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">ดู Capacity</button></div><div class="table-wrap"><table class="table" style="min-width:850px"><thead><tr><th>Part No.</th><th>Part Name</th><th>Process Flow</th><th>Steps</th><th>Machines</th><th style="text-align:right">Total CT (sec)</th></tr></thead><tbody>${partRows}</tbody></table></div></div>`;
+  }).join('');
+  host.querySelectorAll('.dept-part-row').forEach(tr=>tr.onclick=()=>{showView('parts');document.getElementById('partSummaryDept').value=tr.dataset.dept;document.getElementById('partSummarySearch').value=tr.dataset.part;renderPartSummary()});
+}
 function renderDashboard(){
   document.getElementById('kDept').textContent=departments.length;
   document.getElementById('kPart').textContent=new Set(records.map(r=>(r.partNo||'').trim()).filter(Boolean)).size;
@@ -175,11 +211,11 @@ function renderPartSummary(){
 }
 function renderSearch(){const q=document.getElementById('searchText').value.toLowerCase(),rows=records.filter(r=>!q||[r.partNo,r.partName,r.department,r.process,r.machine,r.step].join(' ').toLowerCase().includes(q));document.getElementById('searchBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.partNo)}</td><td>${esc(r.department)}</td><td>${esc(r.process)}</td><td>${esc(r.step)}</td><td>${esc(r.machine||'-')}</td><td>${esc(r.ct||'-')}</td><td>${fmt(capHour(r))}</td><td>${fmt(capDay(r))}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">ไม่พบข้อมูล</td></tr>`}
 function renderSettings(){const u=document.getElementById('apiUrlPreview');if(u)u.textContent=isApiConfigured()?APPS_SCRIPT_URL:'ยังไม่ได้ตั้งค่า — ใส่ URL /exec ในตัวแปร APPS_SCRIPT_URL';const t=document.getElementById('lastSync');if(t)t.textContent=lastSync?new Date(lastSync).toLocaleString('th-TH'):'-' }
-function renderAll(){renderDashboard();renderCapacity();renderPartSummary();renderSearch();renderSettings()}
-function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));const map={dashboard:['Factory Capacity Dashboard','ภาพรวม Capacity ทั้งโรงงาน — ข้อมูลจาก Google Sheet'],departments:['Departments','ดูภาพรวม 10 แผนก'],capacity:['Capacity Database','ข้อมูล Capacity แยก Process / Step / Machine จาก Google Sheet'],search:['Search / Compare','ค้นหาและเปรียบเทียบ Capacity'],parts:['Part Summary','สรุป Part No. ว่าผ่าน Process / Step ใดบ้าง ใช้เครื่องอะไร และเวลารวมทั้งหมด'],settings:['Data Source','GitHub Pages + Google Sheet Backend']};document.getElementById('pageTitle').textContent=map[id][0];document.getElementById('pageSub').textContent=map[id][1];if(id==='capacity')renderCapacity();if(id==='parts')renderPartSummary();if(id==='search')renderSearch();if(id==='settings')renderSettings()}
+function renderAll(){renderDashboard();renderDepartmentMaster();renderDepartmentPartGroups();renderCapacity();renderPartSummary();renderSearch();renderSettings()}
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));const map={dashboard:['Factory Capacity Dashboard','ภาพรวม Capacity ทั้งโรงงาน — ข้อมูลจาก Google Sheet'],departments:['Departments','เพิ่ม/ลบแผนก และดูข้อมูลแยกแผนก → Part จาก Google Sheet'],capacity:['Capacity Database','ข้อมูล Capacity แยก Process / Step / Machine จาก Google Sheet'],search:['Search / Compare','ค้นหาและเปรียบเทียบ Capacity'],parts:['Part Summary','สรุป Part No. ว่าผ่าน Process / Step ใดบ้าง ใช้เครื่องอะไร และเวลารวมทั้งหมด'],settings:['Data Source','GitHub Pages + Google Sheet Backend']};document.getElementById('pageTitle').textContent=map[id][0];document.getElementById('pageSub').textContent=map[id][1];if(id==='departments'){renderDepartmentMaster();renderDepartmentPartGroups()}if(id==='capacity')renderCapacity();if(id==='parts')renderPartSummary();if(id==='search')renderSearch();if(id==='settings')renderSettings()}
 function openDept(d){showView('capacity');document.getElementById('filterDept').value=d;renderCapacity()}
 
-document.getElementById('refreshBtn').onclick=loadData;
+document.getElementById('refreshBtn').onclick=loadData;document.getElementById('addDeptBtn').onclick=addDepartment;document.getElementById('newDeptName').addEventListener('keydown',e=>{if(e.key==='Enter')addDepartment()});
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
 document.getElementById('filterText').addEventListener('input',renderCapacity);document.getElementById('filterDept').addEventListener('change',renderCapacity);document.getElementById('filterProcess').addEventListener('change',renderCapacity);document.getElementById('searchText').addEventListener('input',renderSearch);document.getElementById('partSummarySearch').addEventListener('input',renderPartSummary);document.getElementById('partSummaryDept').addEventListener('change',renderPartSummary);document.getElementById('dashboardPartSearch').addEventListener('input',renderDashboardParts);document.getElementById('dashboardDept').addEventListener('change',renderDashboardParts);
 populateDepartments();renderAll();loadData();

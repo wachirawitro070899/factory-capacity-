@@ -1,12 +1,17 @@
 const SPREADSHEET_ID = '1eXby1xmCjhp_C8H_r7OC8JmnLu00WRYq';
 const DATA_SHEET = 'Capacity_Data';
 const DEPARTMENT_SHEET = 'Department_Master';
+// เปลี่ยนค่านี้ก่อน Deploy จริง หรือใช้ Script Properties ชื่อ CAPACITY_ADMIN_KEY
+const DEFAULT_ADMIN_KEY = 'CHANGE_ME_2026';
 
 function doGet(e) {
   try {
     const action = String((e && e.parameter && e.parameter.action) || 'capacity').toLowerCase();
     let payload;
     if (action === 'capacity') payload = getCapacityData_();
+    else if (action === 'departments') payload = { ok: true, departments: getDepartments_(SpreadsheetApp.openById(SPREADSHEET_ID)) };
+    else if (action === 'adddepartment') payload = addDepartment_(e);
+    else if (action === 'deletedepartment') payload = deleteDepartment_(e);
     else payload = { ok: false, error: 'Unknown action: ' + action };
     return output_(payload, e);
   } catch (err) {
@@ -49,21 +54,87 @@ function getCapacityData_() {
     remark: pick(row, ['Remark','Remarks'])
   })).filter(r => r.partNo || r.process || r.machine);
 
+  const masterDepartments = getDepartments_(ss);
+  const dataDepartments = records.map(r => String(r.department || '').trim()).filter(Boolean);
+  const departments = [...new Set(masterDepartments.concat(dataDepartments))];
+
   return {
     ok: true,
     spreadsheetId: SPREADSHEET_ID,
     records,
-    departments: getDepartments_(ss),
+    departments,
     generatedAt: new Date().toISOString()
   };
 }
 
 function getDepartments_(ss) {
   const sh = ss.getSheetByName(DEPARTMENT_SHEET);
-  if (!sh || sh.getLastRow() < 2) {
-    return ['Stamping','Welding','CNC','Tapping','Bending','Engineering Support','Machine Maintenance','Tooling Maintenance','Sorting 1','Sorting 2'];
+  if (!sh) return [];
+  if (sh.getLastRow() < 2) return [];
+  return [...new Set(sh.getRange(2, 1, sh.getLastRow()-1, 1).getDisplayValues().flat().map(String).map(s=>s.trim()).filter(Boolean))];
+}
+
+function getAdminKey_() {
+  return PropertiesService.getScriptProperties().getProperty('CAPACITY_ADMIN_KEY') || DEFAULT_ADMIN_KEY;
+}
+
+function requireAdmin_(e) {
+  const supplied = String((e && e.parameter && e.parameter.key) || '');
+  if (!supplied || supplied !== getAdminKey_()) throw new Error('Admin Key ไม่ถูกต้อง');
+}
+
+function ensureDepartmentSheet_(ss) {
+  let sh = ss.getSheetByName(DEPARTMENT_SHEET);
+  if (!sh) sh = ss.insertSheet(DEPARTMENT_SHEET);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1,1).setValue('Department').setFontWeight('bold').setBackground('#dbeafe');
+    sh.setFrozenRows(1);
   }
-  return sh.getRange(2, 1, sh.getLastRow()-1, 1).getDisplayValues().flat().map(String).map(s=>s.trim()).filter(Boolean);
+  return sh;
+}
+
+function addDepartment_(e) {
+  requireAdmin_(e);
+  const name = String((e && e.parameter && e.parameter.name) || '').trim();
+  if (!name) throw new Error('กรุณาระบุชื่อแผนก');
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ensureDepartmentSheet_(ss);
+  const current = getDepartments_(ss);
+  if (current.some(x => x.toLowerCase() === name.toLowerCase())) return { ok: true, message: 'แผนกนี้มีอยู่แล้ว', departments: current };
+  sh.appendRow([name]);
+  return { ok: true, message: 'เพิ่มแผนกแล้ว', departments: getDepartments_(ss) };
+}
+
+function deleteDepartment_(e) {
+  requireAdmin_(e);
+  const name = String((e && e.parameter && e.parameter.name) || '').trim();
+  if (!name) throw new Error('กรุณาระบุชื่อแผนก');
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const data = ss.getSheetByName(DATA_SHEET);
+  if (data && data.getLastRow() >= 2) {
+    const values = data.getDataRange().getDisplayValues();
+    const headers = values[0].map(normalize_);
+    const deptIdx = headers.indexOf(normalize_('Department'));
+    const sectionIdx = headers.indexOf(normalize_('Section'));
+    const idx = deptIdx >= 0 ? deptIdx : sectionIdx;
+    if (idx >= 0) {
+      const used = values.slice(1).some(row => String(row[idx] || '').trim().toLowerCase() === name.toLowerCase());
+      if (used) throw new Error('ลบไม่ได้: แผนกนี้ยังมี Part/Capacity อยู่ใน Capacity_Data กรุณาย้ายหรือลบข้อมูลของแผนกนี้ก่อน');
+    }
+  }
+  const sh = ensureDepartmentSheet_(ss);
+  if (sh.getLastRow() >= 2) {
+    const vals = sh.getRange(2,1,sh.getLastRow()-1,1).getDisplayValues().flat();
+    for (let i = vals.length - 1; i >= 0; i--) {
+      if (String(vals[i] || '').trim().toLowerCase() === name.toLowerCase()) sh.deleteRow(i + 2);
+    }
+  }
+  return { ok: true, message: 'ลบแผนกแล้ว', departments: getDepartments_(ss) };
+}
+
+// รันครั้งเดียวเพื่อกำหนด Admin Key แบบไม่ต้องเขียนคีย์จริงไว้ในโค้ด
+function setCapacityAdminKey() {
+  PropertiesService.getScriptProperties().setProperty('CAPACITY_ADMIN_KEY', 'PUT_YOUR_ADMIN_KEY_HERE');
 }
 
 function output_(payload, e) {
