@@ -1,57 +1,26 @@
-FACTORY CAPACITY SYSTEM - GITHUB PAGES + GOOGLE SHEET
+FACTORY CAPACITY - GOOGLE SHEET LIVE BACKEND
 
 Google Sheet ID:
-1eXby1xmCjhp_C8H_r7OC8JmnLu00WRYq
+1PvNRR9uekifW7O-cmxh78bOWpYMuYhk3VtK76FGy6BE
 
-FILES
-- index.html   : หน้าเว็บสำหรับ GitHub Pages
-- Code.gs      : Google Apps Script Backend
+Apps Script Web App URL already configured in index.html:
+https://script.google.com/macros/s/AKfycbzKZKWLTg8NxTHxDoutr9WdzB6BJKo_6QoGkPvhvkQPMJHfEe9gqSA6pKFqSiwexls/exec
 
-GOOGLE SHEET STRUCTURE
-1) Capacity_Data
-   1 row = 1 Step ของ Part No.
-   Columns:
-   Part No. | Part Name | Department | Process | Step | Machine | CT (sec/pc) | Output/Cycle | Efficiency % | Working Hours/Shift | Shifts/Day | Status | Remark
+STRUCTURE
+- 1 Google Sheet tab = 1 Machine
+- Sheet/tab name = Machine name
+- Recommended headers:
+  Part No. | Part Name | Process | Step | CT (sec/pc) | Output/Cycle | Efficiency % | Department | Remark
 
-2) Department_Master
-   Column A = Department
-   หน้าเว็บสามารถเพิ่ม/ลบ Department ในชีตนี้ได้
+UPDATE APPS SCRIPT
+1. Open the new Google Sheet.
+2. Extensions > Apps Script.
+3. Replace Code.gs with the Code.gs in this package.
+4. Save.
+5. Deploy > Manage deployments.
+6. Edit deployment > New version > Deploy.
+7. Who has access should be Anyone.
 
-FIRST SETUP
-1. เปิด Google Sheet
-2. Extensions > Apps Script
-3. วาง Code.gs
-4. รัน setupCapacitySheets() 1 ครั้ง และอนุญาตสิทธิ์
-5. เปลี่ยน Admin Key:
-   วิธีง่าย: แก้ DEFAULT_ADMIN_KEY ใน Code.gs จาก CHANGE_ME_2026 เป็นคีย์ที่คุณต้องการ
-   หรือใช้ Script Properties ชื่อ CAPACITY_ADMIN_KEY
-6. Deploy > New deployment > Web app
-   Execute as: Me
-   Who has access: Anyone
-7. Copy URL ที่ลงท้าย /exec
-8. เปิด index.html แล้วเปลี่ยน:
-   const APPS_SCRIPT_URL='PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
-   เป็น URL /exec ของคุณ
-9. Upload index.html ขึ้น GitHub Pages
-
-DEPARTMENT MANAGEMENT
-- หน้า Departments สามารถเพิ่ม/ลบแผนกได้
-- ตอนเพิ่ม/ลบ ระบบจะถาม Admin Key
-- Admin Key จะเก็บเฉพาะ session ของ browser
-- ถ้าแผนกยังมีข้อมูลใน Capacity_Data ระบบจะไม่ให้ลบ เพื่อป้องกันข้อมูล Part หาย
-
-DISPLAY LOGIC
-- Dashboard: ภาพรวมทั้งโรงงาน
-- Departments: แยก Department -> Part No.
-- Part Summary: Part No. -> Process -> Step -> Machine -> CT
-- Process เดียวมีหลาย Step ได้
-- Total CT คำนวณรวมจาก Step ที่อยู่ใน Part นั้น
-- ข้อมูลแผนกที่พบใน Capacity_Data จะยังถูกแสดง แม้ไม่ได้อยู่ใน Department_Master
-
-WHEN DATA CHANGES
-- แก้ Part / Process / Step / Machine / CT ใน Google Sheet
-- หน้าเว็บกด Refresh Data
-- ไม่ต้อง Upload GitHub ใหม่สำหรับการเปลี่ยนข้อมูล Capacity
-
-IMPORTANT
-หลังแก้ Code.gs แล้ว ต้อง Deploy เวอร์ชันใหม่ของ Apps Script เพื่อให้ API ล่าสุดทำงาน
+UPDATE GITHUB
+- Replace the existing index.html with the index.html in this package.
+- GitHub Pages will then load data from Apps Script automatically.
