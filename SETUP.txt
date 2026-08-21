@@ -1,26 +1,24 @@
-FACTORY CAPACITY - GOOGLE SHEET LIVE BACKEND
+FACTORY CAPACITY - MACHINE + PART ONLY
+
+โครงสร้างหลัก:
+Machine -> Part No. -> Process -> Step -> CT
+
+Google Sheet:
+1 tab = 1 Machine
+ชื่อ tab = ชื่อเครื่องจักร
+
+หัวตารางแนะนำในแต่ละ Machine tab:
+Part No. | Part Name | Process | Step | CT (sec/pc) | Output/Cycle | Efficiency % | Working Hours/Shift | Shifts/Day | Status | Remark
 
 Google Sheet ID:
 1PvNRR9uekifW7O-cmxh78bOWpYMuYhk3VtK76FGy6BE
 
-Apps Script Web App URL already configured in index.html:
+Apps Script Web App URL:
 https://script.google.com/macros/s/AKfycbzKZKWLTg8NxTHxDoutr9WdzB6BJKo_6QoGkPvhvkQPMJHfEe9gqSA6pKFqSiwexls/exec
 
-STRUCTURE
-- 1 Google Sheet tab = 1 Machine
-- Sheet/tab name = Machine name
-- Recommended headers:
-  Part No. | Part Name | Process | Step | CT (sec/pc) | Output/Cycle | Efficiency % | Department | Remark
-
-UPDATE APPS SCRIPT
-1. Open the new Google Sheet.
-2. Extensions > Apps Script.
-3. Replace Code.gs with the Code.gs in this package.
-4. Save.
-5. Deploy > Manage deployments.
-6. Edit deployment > New version > Deploy.
-7. Who has access should be Anyone.
-
-UPDATE GITHUB
-- Replace the existing index.html with the index.html in this package.
-- GitHub Pages will then load data from Apps Script automatically.
+ติดตั้ง:
+1. วาง Code.gs ใน Apps Script
+2. Save
+3. Deploy > Manage deployments > Edit > New version > Deploy
+4. อัป index.html ไปแทนไฟล์เดิมใน GitHub Pages
+5. เปิดเว็บแล้วกด Ctrl+F5

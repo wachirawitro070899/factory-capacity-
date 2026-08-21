@@ -1,25 +1,27 @@
 const SPREADSHEET_ID = '1PvNRR9uekifW7O-cmxh78bOWpYMuYhk3VtK76FGy6BE';
 
-// 1 Google Sheet tab = 1 Machine
-// ชื่อแท็บจะถูกใช้เป็นชื่อเครื่องจักรโดยอัตโนมัติ
+// Factory Capacity backend
+// โครงสร้างหลัก: 1 Google Sheet tab = 1 Machine
+// ชื่อแท็บ = ชื่อเครื่องจักร
+// ข้อมูลแต่ละแถว = Part No. + Process + Step + CT
 function doGet(e) {
   try {
     const action = String((e && e.parameter && e.parameter.action) || 'capacity').toLowerCase();
-    let payload;
 
     if (action === 'capacity') {
-      payload = getCapacityData_();
-    } else if (action === 'ping') {
-      payload = {
-        ok: true,
-        spreadsheetId: SPREADSHEET_ID,
-        generatedAt: new Date().toISOString()
-      };
-    } else {
-      payload = { ok: false, error: 'Unknown action: ' + action };
+      return output_(getCapacityData_(), e);
     }
 
-    return output_(payload, e);
+    if (action === 'ping') {
+      return output_({
+        ok: true,
+        spreadsheetId: SPREADSHEET_ID,
+        structure: '1 sheet = 1 machine',
+        generatedAt: new Date().toISOString()
+      }, e);
+    }
+
+    return output_({ ok: false, error: 'Unknown action: ' + action }, e);
   } catch (err) {
     return output_({
       ok: false,
@@ -30,94 +32,98 @@ function doGet(e) {
 
 function getCapacityData_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheets = ss.getSheets();
   const records = [];
   const machineSheets = [];
   const skippedSheets = [];
 
-  sheets.forEach(sheet => {
-    const sheetName = String(sheet.getName() || '').trim();
-    if (!sheetName) return;
+  ss.getSheets().forEach(sheet => {
+    const machine = String(sheet.getName() || '').trim();
+    if (!machine) return;
 
     const values = sheet.getDataRange().getDisplayValues();
-    if (!values || values.length === 0 || values[0].length === 0) {
-      skippedSheets.push({ sheet: sheetName, reason: 'empty' });
+    if (!values || values.length < 1 || values[0].length < 1) {
+      skippedSheets.push({ sheet: machine, reason: 'empty' });
       return;
     }
 
     const headers = values[0].map(normalize_);
     const index = {};
-    headers.forEach((h, i) => {
-      if (h) index[h] = i;
+    headers.forEach((header, i) => {
+      if (header) index[header] = i;
     });
 
-    // อ่านเฉพาะแท็บที่มีโครงสร้างข้อมูล Part/Process/Step
     const hasPart = hasAnyHeader_(index, ['Part No.', 'Part No', 'PartNo', 'Part Number']);
     const hasProcess = hasAnyHeader_(index, ['Process', 'Operation']);
     const hasStep = hasAnyHeader_(index, ['Step', 'Process Step', 'Operation Step']);
 
+    // ไม่ใช่แท็บเครื่องจักรถ้าไม่มีหัวข้อมูลหลักเลย
     if (!hasPart && !hasProcess && !hasStep) {
-      skippedSheets.push({ sheet: sheetName, reason: 'header not recognized' });
+      skippedSheets.push({ sheet: machine, reason: 'machine headers not recognized' });
       return;
     }
 
-    const pick = (row, names, fallback = '') => {
-      for (const n of names) {
-        const i = index[normalize_(n)];
-        if (i !== undefined && i < row.length && String(row[i]).trim() !== '') {
-          return row[i];
+    const pick = (row, names, fallback) => {
+      for (let i = 0; i < names.length; i++) {
+        const col = index[normalize_(names[i])];
+        if (col !== undefined && col < row.length && String(row[col]).trim() !== '') {
+          return row[col];
         }
       }
-      return fallback;
+      return fallback === undefined ? '' : fallback;
     };
 
-    let sheetHasRecords = false;
+    let rowCount = 0;
 
     values.slice(1).forEach(row => {
       if (!row.some(v => String(v).trim() !== '')) return;
 
-      const partNo = pick(row, ['Part No.', 'Part No', 'PartNo', 'Part Number']);
-      const partName = pick(row, ['Part Name', 'PartName', 'Description', 'Part Description']);
-      const process = pick(row, ['Process', 'Operation']);
-      const step = pick(row, ['Step', 'Process Step', 'Operation Step']);
+      const partNo = String(pick(row, ['Part No.', 'Part No', 'PartNo', 'Part Number']) || '').trim();
+      const partName = String(pick(row, ['Part Name', 'PartName', 'Description', 'Part Description']) || '').trim();
+      const process = String(pick(row, ['Process', 'Operation']) || '').trim();
+      const step = String(pick(row, ['Step', 'Process Step', 'Operation Step']) || '').trim();
+
+      // ต้องมีอย่างน้อย Part / Process / Step อย่างใดอย่างหนึ่ง
+      if (!partNo && !process && !step) return;
+
       const ct = toNumber_(pick(row, ['CT (sec/pc)', 'CT (sec)', 'CT', 'Cycle Time', 'Cycle Time (sec)', 'Time (sec)']));
       const outputCycle = toNumber_(pick(row, ['Output/Cycle', 'Output per Cycle', 'Output / Cycle', 'Qty/Cycle'], 1)) || 1;
       const eff = toNumber_(pick(row, ['Efficiency %', 'Eff %', 'Efficiency', 'Eff'], 100)) || 100;
-      const department = pick(row, ['Department', 'Section', 'Dept']);
       const hours = toNumber_(pick(row, ['Working Hours/Shift', 'Hours/Shift', 'Hours'], 8)) || 8;
       const shifts = toNumber_(pick(row, ['Shifts/Day', 'Shift/Day', 'Shifts'], 2)) || 2;
-      const status = pick(row, ['Status'], 'Active');
-      const remark = pick(row, ['Remark', 'Remarks', 'Note', 'Notes']);
-
-      // ข้ามแถวที่ไม่มีข้อมูลหลักเลย
-      if (!partNo && !process && !step) return;
+      const status = String(pick(row, ['Status'], 'Active') || 'Active').trim();
+      const remark = String(pick(row, ['Remark', 'Remarks', 'Note', 'Notes']) || '').trim();
 
       records.push({
-        machine: sheetName,
-        sourceSheet: sheetName,
-        partNo: String(partNo || '').trim(),
-        partName: String(partName || '').trim(),
-        department: String(department || '').trim(),
-        process: String(process || '').trim(),
-        step: String(step || '').trim(),
+        machine: machine,
+        sourceSheet: machine,
+        partNo: partNo,
+        partName: partName,
+        process: process,
+        step: step,
         ct: ct,
         outputCycle: outputCycle,
         eff: eff,
         hours: hours,
         shifts: shifts,
-        status: String(status || 'Active').trim(),
-        remark: String(remark || '').trim()
+        status: status,
+        remark: remark
       });
-      sheetHasRecords = true;
+
+      rowCount++;
     });
 
-    if (sheetHasRecords) machineSheets.push(sheetName);
+    if (rowCount > 0) {
+      machineSheets.push(machine);
+    } else {
+      skippedSheets.push({ sheet: machine, reason: 'no production rows' });
+    }
   });
 
   return {
     ok: true,
     spreadsheetId: SPREADSHEET_ID,
     spreadsheetName: ss.getName(),
+    structure: 'Machine -> Part No. -> Process -> Step -> CT',
     machineSheets: machineSheets,
     machineCount: machineSheets.length,
     recordCount: records.length,
@@ -128,13 +134,14 @@ function getCapacityData_() {
 }
 
 function hasAnyHeader_(index, names) {
-  return names.some(n => index[normalize_(n)] !== undefined);
+  return names.some(name => index[normalize_(name)] !== undefined);
 }
 
 function output_(payload, e) {
   const json = JSON.stringify(payload);
   const callback = e && e.parameter ? String(e.parameter.callback || '') : '';
 
+  // JSONP สำหรับ GitHub Pages เพื่อเลี่ยงปัญหา CORS
   if (callback && /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) {
     return ContentService
       .createTextOutput(callback + '(' + json + ');')
@@ -146,24 +153,24 @@ function output_(payload, e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function normalize_(v) {
-  return String(v || '')
+function normalize_(value) {
+  return String(value || '')
     .trim()
     .toLowerCase()
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ');
 }
 
-function toNumber_(v) {
-  const raw = String(v == null ? '' : v)
+function toNumber_(value) {
+  const raw = String(value == null ? '' : value)
     .replace(/,/g, '')
     .replace(/%/g, '')
     .trim();
-  const n = Number(raw);
-  return isFinite(n) ? n : 0;
+  const number = Number(raw);
+  return isFinite(number) ? number : 0;
 }
 
-// รันฟังก์ชันนี้เพื่อทดสอบจาก Apps Script Editor
+// ใช้ทดสอบใน Apps Script Editor
 function testCapacityData() {
   const data = getCapacityData_();
   Logger.log(JSON.stringify({
