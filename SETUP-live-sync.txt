@@ -1,0 +1,27 @@
+FACTORY CAPACITY V6 - LIVE GOOGLE SHEET SYNC
+
+การทำงาน
+- 1 Google Sheet tab = 1 Machine
+- หน้าเว็บโหลดข้อมูลจาก Google Sheet ทันทีเมื่อเปิดเว็บ
+- Auto Sync ทุก 30 วินาที
+- เมื่อกลับมาเปิดแท็บเว็บ หรือสลับกลับมาที่หน้าต่างเว็บ จะ Sync อีกครั้งทันที
+- มีปุ่ม Refresh สำหรับดึงข้อมูลเองเมื่อต้องการ
+- หน้า Dashboard รวมข้อมูลทุก Machine Sheet เป็น Part Summary อัตโนมัติ
+
+ติดตั้ง
+1. เปิด Google Sheet ของระบบ Capacity
+2. Extensions > Apps Script
+3. วาง Code.gs จากชุดนี้
+4. Deploy > New deployment > Web app
+5. Execute as: Me
+6. Who has access: Anyone
+7. Deploy แล้ว Copy URL ที่ลงท้าย /exec
+8. เปิด index.html และแก้บรรทัด:
+   const APPS_SCRIPT_URL='PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+   ให้เป็น URL /exec ของคุณ
+9. Upload index.html ขึ้น GitHub Pages
+
+หมายเหตุ
+- ถ้าแก้ Part / Process / Step / CT ใน Google Sheet หน้าเว็บจะอัปเดตเองภายในประมาณ 30 วินาที
+- ถ้าเพิ่ม Sheet เครื่องใหม่ หน้าเว็บจะเห็นเครื่องใหม่นั้นอัตโนมัติหลัง Sync
+- ไม่ต้องอัป GitHub ใหม่เมื่อแก้เฉพาะข้อมูลใน Google Sheet
