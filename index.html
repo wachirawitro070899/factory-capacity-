@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Factory Capacity Management</title>
+  <style>
+    :root{--bg:#f4f7fb;--card:#fff;--text:#182230;--muted:#667085;--primary:#2563eb;--primary2:#1d4ed8;--border:#dfe6ef;--good:#16a34a;--warn:#f59e0b;--danger:#dc2626}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,"Noto Sans Thai",sans-serif;background:var(--bg);color:var(--text)}
+    .app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.side{background:#0f172a;color:#fff;padding:22px 16px;position:sticky;top:0;height:100vh}.brand{font-weight:800;font-size:20px;margin-bottom:26px}.brand small{display:block;font-size:11px;font-weight:500;color:#94a3b8;margin-top:5px}.nav button{width:100%;text-align:left;border:0;background:transparent;color:#cbd5e1;padding:11px 12px;border-radius:9px;margin:3px 0;cursor:pointer;font-size:14px}.nav button.active,.nav button:hover{background:#1e293b;color:#fff}.main{padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:18px}.title h1{font-size:26px;margin:0}.title p{margin:6px 0 0;color:var(--muted);font-size:13px}.btn{border:0;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:700}.btn.primary{background:var(--primary);color:#fff}.btn.primary:hover{background:var(--primary2)}.btn.light{background:#eef2f7;color:#334155}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px}.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.04)}.kpi .label{color:var(--muted);font-size:12px}.kpi .value{font-size:28px;font-weight:800;margin-top:7px}.kpi .sub{font-size:11px;color:#98a2b3;margin-top:5px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.toolbar input,.toolbar select{border:1px solid var(--border);border-radius:9px;padding:10px 11px;background:white;min-width:170px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.section-head h2{font-size:17px;margin:0}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:13px;min-width:1050px}.table th{background:#eff6ff;color:#1e3a8a;text-align:left;padding:10px;border-bottom:1px solid var(--border);white-space:nowrap}.table td{padding:10px;border-bottom:1px solid #edf1f5;vertical-align:middle}.badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.badge.active{background:#dcfce7;color:#166534}.badge.draft{background:#fff7ed;color:#9a3412}.actions button{border:0;background:#eef2ff;color:#3730a3;border-radius:7px;padding:6px 8px;cursor:pointer;margin-right:4px}.dept-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.dept{cursor:pointer;transition:.15s}.dept:hover{transform:translateY(-2px);border-color:#93c5fd}.dept .name{font-weight:800}.dept .meta{font-size:11px;color:var(--muted);margin-top:8px}.progress{height:7px;background:#eef2f7;border-radius:99px;overflow:hidden;margin-top:10px}.progress span{display:block;height:100%;background:var(--primary)}
+    .modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);align-items:center;justify-content:center;padding:16px;z-index:20}.modal.show{display:flex}.modal-box{background:white;width:min(900px,100%);max-height:90vh;overflow:auto;border-radius:16px;padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0}.close{border:0;background:#f1f5f9;border-radius:8px;padding:7px 10px;cursor:pointer}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}.field label{display:block;font-size:12px;color:#475467;margin-bottom:5px}.field input,.field select{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px}.span-3{grid-column:span 3}.hint{font-size:11px;color:#98a2b3;margin-top:5px}.empty{padding:35px;text-align:center;color:#98a2b3}.footer-note{font-size:11px;color:#98a2b3;margin-top:12px}.hidden{display:none}
+    @media(max-width:1000px){.app{grid-template-columns:1fr}.side{height:auto;position:relative}.nav{display:flex;overflow:auto}.nav button{min-width:150px}.grid{grid-template-columns:repeat(2,1fr)}.dept-grid{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}.span-3{grid-column:span 1}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">CAPACITY SYSTEM<small>Factory Capacity Management</small></div>
+    <div class="nav">
+      <button class="active" data-view="dashboard">Dashboard</button>
+      <button data-view="departments">10 Departments</button>
+      <button data-view="capacity">Capacity Database</button>
+      <button data-view="parts">Part Summary</button>
+      <button data-view="search">Search / Compare</button>
+      <button data-view="settings">Data Source</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <div class="title"><h1 id="pageTitle">Factory Capacity Dashboard</h1><p id="pageSub">ดูและค้นหา Capacity จาก Google Sheet แยกตามแผนก / Process / Step / Machine</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn light" style="text-decoration:none" href="https://docs.google.com/spreadsheets/d/1eXby1xmCjhp_C8H_r7OC8JmnLu00WRYq/edit" target="_blank" rel="noopener">เปิด Google Sheet</a><button class="btn primary" id="refreshBtn">↻ Refresh Data</button></div>
+    </div>
+
+    <section id="dashboard" class="view">
+      <div class="grid">
+        <div class="card kpi"><div class="label">Part Numbers</div><div class="value" id="kPart">0</div><div class="sub">Part No. ทั้งหมด</div></div>
+        <div class="card kpi"><div class="label">Processes</div><div class="value" id="kProcess">0</div><div class="sub">Process ที่บันทึก</div></div>
+        <div class="card kpi"><div class="label">Steps</div><div class="value" id="kStep">0</div><div class="sub">Step ทั้งหมด</div></div>
+        <div class="card kpi"><div class="label">Machines</div><div class="value" id="kMachine">0</div><div class="sub">เครื่องจักรที่ใช้งาน</div></div>
+        <div class="card kpi"><div class="label">Departments</div><div class="value" id="kDept">10</div><div class="sub">แผนกทั้งหมด</div></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-head"><div><h2>Part Capacity Overview</h2><div style="font-size:12px;color:#98a2b3;margin-top:4px">สรุปเส้นทางการผลิต Process / Step / Machine และเวลารวมของแต่ละ Part</div></div><button class="btn light" onclick="showView('parts')">ดู Part Summary</button></div>
+        <div class="toolbar"><input id="dashboardPartSearch" placeholder="ค้นหา Part No. / Part Name / Machine" style="min-width:280px"><select id="dashboardDept"><option value="">ทุกแผนก</option></select></div>
+        <div class="table-wrap"><table class="table" style="min-width:900px"><thead><tr><th>Part No.</th><th>Part Name</th><th>Department</th><th>Processes</th><th>Steps</th><th>Machines Used</th><th style="text-align:right">Total CT (sec)</th></tr></thead><tbody id="dashboardPartBody"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2>ภาพรวม 10 แผนก</h2><button class="btn light" onclick="showView('departments')">ดูทั้งหมด</button></div>
+        <div class="dept-grid" id="deptCards"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="section-head"><h2>ข้อมูลล่าสุด</h2><span style="font-size:12px;color:#98a2b3">เรียงตามรายการที่เพิ่มล่าสุด</span></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Department</th><th>Part No.</th><th>Process</th><th>Step</th><th>Machine</th><th>CT (sec)</th><th>Output/Cycle</th><th>Capacity/Hour</th><th>Status</th></tr></thead><tbody id="recentBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="departments" class="view hidden">
+      <div class="card"><div class="section-head"><h2>Departments</h2><span style="font-size:12px;color:#98a2b3">สามารถเปลี่ยนชื่อแผนกภายหลังได้ใน Master Data</span></div><div class="dept-grid" id="deptCards2"></div></div>
+    </section>
+
+    <section id="capacity" class="view hidden">
+      <div class="toolbar"><input id="filterText" placeholder="ค้นหา Part / Process / Machine"><select id="filterDept"><option value="">ทุกแผนก</option></select><select id="filterProcess"><option value="">ทุก Process</option></select></div>
+      <div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Department</th><th>Part No.</th><th>Part Name</th><th>Process</th><th>Step</th><th>Machine</th><th>CT (sec)</th><th>Output/Cycle</th><th>Efficiency %</th><th>Capacity/Hour</th><th>Capacity/Shift</th><th>Status</th></tr></thead><tbody id="capacityBody"></tbody></table></div></div>
+    </section>
+
+    <section id="parts" class="view hidden">
+      <div class="toolbar"><input id="partSummarySearch" placeholder="ค้นหา Part No. / Part Name"><select id="partSummaryDept"><option value="">ทุกแผนก</option></select></div>
+      <div id="partSummaryList"></div>
+    </section>
+
+    <section id="search" class="view hidden">
+      <div class="card"><div class="section-head"><h2>Search & Compare Capacity</h2></div><div class="toolbar"><input id="searchText" placeholder="พิมพ์ Part No., Part Name, Process หรือ Machine" style="min-width:320px"><button class="btn primary" onclick="renderSearch()">ค้นหา</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Part No.</th><th>Department</th><th>Process</th><th>Step</th><th>Machine</th><th>CT</th><th>Capacity/Hour</th><th>Capacity/Day (2 Shifts)</th></tr></thead><tbody id="searchBody"></tbody></table></div></div>
+    </section>
+
+    <section id="settings" class="view hidden">
+      <div class="card">
+        <div class="section-head"><h2>Google Sheet Backend</h2><button class="btn primary" onclick="loadData()">↻ Refresh Data</button></div>
+        <div style="line-height:1.75;font-size:14px">
+          <div><b>Data Source:</b> Google Sheet</div>
+          <div><b>Spreadsheet ID:</b> 1eXby1xmCjhp_C8H_r7OC8JmnLu00WRYq</div>
+          <div><b>Data Sheet:</b> Capacity_Data</div>
+          <div><b>Department Master:</b> Department_Master</div>
+          <div><b>Apps Script API:</b> <span id="apiUrlPreview">-</span></div>
+          <div><b>Last Sync:</b> <span id="lastSync">-</span></div>
+          <div id="connectionStatus" style="margin-top:12px;padding:10px 12px;border-radius:8px;background:#fee4e2;color:#b42318;font-weight:700">กำลังตรวจสอบการเชื่อมต่อ...</div>
+        </div>
+        <div class="footer-note">เพิ่ม/แก้ไขข้อมูลที่ Google Sheet เท่านั้น หน้าเว็บ GitHub Pages นี้ใช้สำหรับดู Dashboard, Part Summary, Capacity Database และค้นหาข้อมูล</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SPREADSHEET_ID='1eXby1xmCjhp_C8H_r7OC8JmnLu00WRYq';
+// หลัง Deploy Code.gs เป็น Web app ให้นำ URL /exec มาใส่ตรงนี้เพียงจุดเดียว
+const APPS_SCRIPT_URL='PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+const defaultDepartments=['Stamping','Welding','CNC','Tapping','Bending','Engineering Support','Machine Maintenance','Tooling Maintenance','Sorting 1','Sorting 2'];
+let departments=[...defaultDepartments];
+let records=[];
+let lastSync=null;
+
+function setLoading(isLoading){
+  const b=document.getElementById('refreshBtn');
+  if(b){b.disabled=isLoading;b.textContent=isLoading?'กำลังโหลด...':'↻ Refresh Data';}
+}
+function showConnection(message, ok=false){
+  const el=document.getElementById('connectionStatus');
+  if(!el)return;
+  el.textContent=message;
+  el.style.color=ok?'#166534':'#b42318';
+  el.style.background=ok?'#dcfce7':'#fee4e2';
+}
+function isApiConfigured(){return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(APPS_SCRIPT_URL)}
+function loadData(){
+  setLoading(true);
+  if(!isApiConfigured()){
+    setLoading(false);
+    showConnection('ยังไม่ได้ใส่ Apps Script Web App URL ใน index.html');
+    renderAll();
+    return;
+  }
+  const cb='capacityCallback_'+Date.now();
+  const script=document.createElement('script');
+  const timer=setTimeout(()=>{
+    cleanup();setLoading(false);showConnection('เชื่อมต่อ Google Sheet ไม่สำเร็จ — ตรวจสอบ Web App URL / สิทธิ์ Deploy');
+  },15000);
+  function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
+  window[cb]=data=>{
+    cleanup();
+    if(!data||data.ok===false){setLoading(false);showConnection('Google Sheet API Error: '+((data&&data.error)||'Unknown error'));return}
+    records=Array.isArray(data.records)?data.records:[];
+    departments=Array.isArray(data.departments)&&data.departments.length?data.departments:[...defaultDepartments];
+    lastSync=data.generatedAt||new Date().toISOString();
+    populateDepartments();renderAll();setLoading(false);
+    showConnection('เชื่อมต่อ Google Sheet แล้ว • '+records.length+' Step/Records',true);
+  };
+  script.onerror=()=>{cleanup();setLoading(false);showConnection('โหลด Apps Script API ไม่สำเร็จ');};
+  script.src=APPS_SCRIPT_URL+'?action=capacity&callback='+encodeURIComponent(cb)+'&_='+Date.now();
+  document.body.appendChild(script);
+}
+function capHour(r){const ct=+r.ct||0,out=+r.outputCycle||1,eff=(+r.eff||0)/100;return ct>0?(3600/ct)*out*(eff||1):0}
+function capShift(r){return capHour(r)*(+r.hours||8)}
+function capDay(r){return capShift(r)*(+r.shifts||2)}
+function fmt(n){return Math.round(n||0).toLocaleString()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function num(v){const n=parseFloat(v);return Number.isFinite(n)?n:0}
+function populateDepartments(){['filterDept','partSummaryDept','dashboardDept'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML='<option value="">ทุกแผนก</option>'+departments.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');if(departments.includes(cur))el.value=cur})}
+function renderDeptCards(target){const host=document.getElementById(target);if(!host)return;host.innerHTML=departments.map(d=>{const rows=records.filter(r=>r.department===d);const p=new Set(rows.map(r=>r.process).filter(Boolean)).size;const m=new Set(rows.map(r=>r.machine).filter(Boolean)).size;const pct=Math.min(100,rows.length*5);return `<div class="card dept" data-dept="${esc(d)}"><div class="name">${esc(d)}</div><div class="meta">${p} Process • ${rows.length} Steps/Records • ${m} Machines</div><div class="progress"><span style="width:${pct}%"></span></div></div>`}).join('');host.querySelectorAll('.dept').forEach(x=>x.onclick=()=>openDept(x.dataset.dept))}
+function renderDashboard(){
+  document.getElementById('kDept').textContent=departments.length;
+  document.getElementById('kPart').textContent=new Set(records.map(r=>(r.partNo||'').trim()).filter(Boolean)).size;
+  document.getElementById('kProcess').textContent=new Set(records.map(r=>r.process).filter(Boolean)).size;
+  document.getElementById('kStep').textContent=records.length;
+  document.getElementById('kMachine').textContent=new Set(records.map(r=>r.machine).filter(Boolean)).size;
+  renderDeptCards('deptCards');renderDeptCards('deptCards2');renderDashboardParts();
+  const body=document.getElementById('recentBody'),rows=[...records].reverse().slice(0,8);
+  body.innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.department)}</td><td>${esc(r.partNo)}</td><td>${esc(r.process)}</td><td>${esc(r.step)}</td><td>${esc(r.machine||'-')}</td><td>${esc(r.ct||'-')}</td><td>${esc(r.outputCycle||1)}</td><td>${fmt(capHour(r))}</td><td><span class="badge ${r.status==='Active'?'active':'draft'}">${esc(r.status||'Active')}</span></td></tr>`).join(''):`<tr><td colspan="9" class="empty">ยังไม่มีข้อมูล Capacity — เพิ่มข้อมูลใน Google Sheet แล้วกด Refresh Data</td></tr>`;
+}
+function getPartGroups(){const map=new Map();records.forEach(r=>{const key=(r.partNo||'').trim()||'(No Part No.)';if(!map.has(key))map.set(key,{partNo:key,partName:r.partName||'',rows:[]});const g=map.get(key);g.rows.push(r);if(!g.partName&&r.partName)g.partName=r.partName});return [...map.values()].sort((a,b)=>a.partNo.localeCompare(b.partNo,undefined,{numeric:true}))}
+function renderDashboardParts(){
+  const body=document.getElementById('dashboardPartBody');if(!body)return;const q=(document.getElementById('dashboardPartSearch')?.value||'').toLowerCase(),dept=document.getElementById('dashboardDept')?.value||'';
+  const groups=getPartGroups().map(g=>({...g,rows:dept?g.rows.filter(r=>r.department===dept):g.rows})).filter(g=>g.rows.length&&(!q||[g.partNo,g.partName,...g.rows.map(r=>r.machine)].join(' ').toLowerCase().includes(q)));
+  body.innerHTML=groups.length?groups.map(g=>{const procs=[...new Set(g.rows.map(r=>r.process).filter(Boolean))],machines=[...new Set(g.rows.map(r=>r.machine).filter(Boolean))],depts=[...new Set(g.rows.map(r=>r.department).filter(Boolean))],total=g.rows.reduce((a,r)=>a+num(r.ct),0);return `<tr class="part-row" data-part="${esc(g.partNo)}" style="cursor:pointer"><td><b>${esc(g.partNo)}</b></td><td>${esc(g.partName||'-')}</td><td>${esc(depts.join(', ')||'-')}</td><td>${procs.length}<div style="font-size:11px;color:#98a2b3;margin-top:3px">${esc(procs.join(' → ')||'-')}</div></td><td>${g.rows.length}</td><td>${esc(machines.join(', ')||'-')}</td><td style="text-align:right;font-weight:800;color:#1d4ed8">${total.toLocaleString(undefined,{maximumFractionDigits:2})}</td></tr>`}).join(''):`<tr><td colspan="7" class="empty">ยังไม่มีข้อมูล Part หรือไม่พบข้อมูลที่ค้นหา</td></tr>`;
+  body.querySelectorAll('.part-row').forEach(tr=>tr.onclick=()=>{showView('parts');document.getElementById('partSummarySearch').value=tr.dataset.part;renderPartSummary()});
+}
+function renderCapacity(){
+  const q=document.getElementById('filterText').value.toLowerCase(),d=document.getElementById('filterDept').value,p=document.getElementById('filterProcess').value;
+  const rows=records.filter(r=>(!q||[r.partNo,r.partName,r.process,r.machine,r.step].join(' ').toLowerCase().includes(q))&&(!d||r.department===d)&&(!p||r.process===p));
+  document.getElementById('capacityBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.department)}</td><td>${esc(r.partNo)}</td><td>${esc(r.partName||'-')}</td><td>${esc(r.process)}</td><td>${esc(r.step)}</td><td>${esc(r.machine||'-')}</td><td>${esc(r.ct||'-')}</td><td>${esc(r.outputCycle||1)}</td><td>${esc(r.eff||100)}%</td><td>${fmt(capHour(r))}</td><td>${fmt(capShift(r))}</td><td><span class="badge ${r.status==='Active'?'active':'draft'}">${esc(r.status||'Active')}</span></td></tr>`).join(''):`<tr><td colspan="12" class="empty">ไม่พบข้อมูล</td></tr>`;
+  const procs=[...new Set(records.map(r=>r.process).filter(Boolean))].sort(),sel=document.getElementById('filterProcess'),cur=sel.value;sel.innerHTML='<option value="">ทุก Process</option>'+procs.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');if(procs.includes(cur))sel.value=cur;
+}
+function renderPartSummary(){
+  const q=(document.getElementById('partSummarySearch')?.value||'').toLowerCase(),d=document.getElementById('partSummaryDept')?.value||'';let groups=getPartGroups().filter(g=>(!q||[g.partNo,g.partName].join(' ').toLowerCase().includes(q))&&(!d||g.rows.some(r=>r.department===d)));const host=document.getElementById('partSummaryList');if(!groups.length){host.innerHTML='<div class="card empty">ยังไม่มีข้อมูล Part หรือไม่พบข้อมูลที่ค้นหา</div>';return}
+  host.innerHTML=groups.map(g=>{let rows=d?g.rows.filter(r=>r.department===d):g.rows;const procMap=new Map();rows.forEach(r=>{const k=r.process||'-';if(!procMap.has(k))procMap.set(k,[]);procMap.get(k).push(r)});const total=rows.reduce((a,r)=>a+num(r.ct),0),dept=[...new Set(rows.map(r=>r.department).filter(Boolean))].join(', ');const procHtml=[...procMap.entries()].map(([proc,steps])=>{const pt=steps.reduce((a,r)=>a+num(r.ct),0),stepRows=steps.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.step||'-')}</td><td>${esc(r.machine||'-')}</td><td style="text-align:right">${num(r.ct)?num(r.ct).toLocaleString(undefined,{maximumFractionDigits:2}):'-'}</td></tr>`).join('');return `<div style="border:1px solid var(--border);border-radius:12px;margin-top:10px;overflow:hidden"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 12px;background:#f8fafc"><b>${esc(proc)}</b><span style="font-size:12px;color:#475467">${steps.length} Step • Process Time <b>${pt.toLocaleString(undefined,{maximumFractionDigits:2})} sec</b></span></div><div class="table-wrap"><table class="table" style="min-width:620px"><thead><tr><th>#</th><th>Step</th><th>Machine</th><th style="text-align:right">CT (sec)</th></tr></thead><tbody>${stepRows}</tbody></table></div></div>`}).join('');return `<div class="card" style="margin-bottom:14px"><div class="section-head" style="align-items:flex-start"><div><h2 style="font-size:20px">${esc(g.partNo)} ${g.partName?`<span style="font-weight:500;color:#667085">— ${esc(g.partName)}</span>`:''}</h2><div style="font-size:12px;color:#667085;margin-top:5px">Department: ${esc(dept||'-')} • ${procMap.size} Process • ${rows.length} Step</div></div><div style="text-align:right"><div style="font-size:11px;color:#667085">Total Process Time</div><div style="font-size:27px;font-weight:800;color:#1d4ed8">${total.toLocaleString(undefined,{maximumFractionDigits:2})} sec</div></div></div>${procHtml}</div>`}).join('');
+}
+function renderSearch(){const q=document.getElementById('searchText').value.toLowerCase(),rows=records.filter(r=>!q||[r.partNo,r.partName,r.department,r.process,r.machine,r.step].join(' ').toLowerCase().includes(q));document.getElementById('searchBody').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.partNo)}</td><td>${esc(r.department)}</td><td>${esc(r.process)}</td><td>${esc(r.step)}</td><td>${esc(r.machine||'-')}</td><td>${esc(r.ct||'-')}</td><td>${fmt(capHour(r))}</td><td>${fmt(capDay(r))}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">ไม่พบข้อมูล</td></tr>`}
+function renderSettings(){const u=document.getElementById('apiUrlPreview');if(u)u.textContent=isApiConfigured()?APPS_SCRIPT_URL:'ยังไม่ได้ตั้งค่า — ใส่ URL /exec ในตัวแปร APPS_SCRIPT_URL';const t=document.getElementById('lastSync');if(t)t.textContent=lastSync?new Date(lastSync).toLocaleString('th-TH'):'-' }
+function renderAll(){renderDashboard();renderCapacity();renderPartSummary();renderSearch();renderSettings()}
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));const map={dashboard:['Factory Capacity Dashboard','ภาพรวม Capacity ทั้งโรงงาน — ข้อมูลจาก Google Sheet'],departments:['Departments','ดูภาพรวม 10 แผนก'],capacity:['Capacity Database','ข้อมูล Capacity แยก Process / Step / Machine จาก Google Sheet'],search:['Search / Compare','ค้นหาและเปรียบเทียบ Capacity'],parts:['Part Summary','สรุป Part No. ว่าผ่าน Process / Step ใดบ้าง ใช้เครื่องอะไร และเวลารวมทั้งหมด'],settings:['Data Source','GitHub Pages + Google Sheet Backend']};document.getElementById('pageTitle').textContent=map[id][0];document.getElementById('pageSub').textContent=map[id][1];if(id==='capacity')renderCapacity();if(id==='parts')renderPartSummary();if(id==='search')renderSearch();if(id==='settings')renderSettings()}
+function openDept(d){showView('capacity');document.getElementById('filterDept').value=d;renderCapacity()}
+
+document.getElementById('refreshBtn').onclick=loadData;
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+document.getElementById('filterText').addEventListener('input',renderCapacity);document.getElementById('filterDept').addEventListener('change',renderCapacity);document.getElementById('filterProcess').addEventListener('change',renderCapacity);document.getElementById('searchText').addEventListener('input',renderSearch);document.getElementById('partSummarySearch').addEventListener('input',renderPartSummary);document.getElementById('partSummaryDept').addEventListener('change',renderPartSummary);document.getElementById('dashboardPartSearch').addEventListener('input',renderDashboardParts);document.getElementById('dashboardDept').addEventListener('change',renderDashboardParts);
+populateDepartments();renderAll();loadData();
+</script>
+</body>
+</html>

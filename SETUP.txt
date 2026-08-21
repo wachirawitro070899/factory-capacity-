@@ -1,0 +1,28 @@
+FACTORY CAPACITY WEB - GITHUB PAGES + GOOGLE SHEET
+
+Google Sheet ID:
+1eXby1xmCjhp_C8H_r7OC8JmnLu00WRYq
+
+1) เปิด Google Sheet > Extensions > Apps Script
+2) วาง Code.gs จากชุดนี้แทนโค้ดเดิม
+3) Run: setupCapacitySheets() จำนวน 1 ครั้ง และอนุญาตสิทธิ์
+4) Deploy > New deployment > Web app
+   Execute as: Me
+   Who has access: Anyone
+5) Copy Web app URL ที่ลงท้าย /exec
+6) เปิด index.html และแก้บรรทัด:
+   const APPS_SCRIPT_URL='PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+   เป็น URL /exec ที่ได้จากข้อ 5
+7) Upload index.html ขึ้น GitHub repository
+8) Settings > Pages > Deploy from a branch > main / root > Save
+
+Google Sheet หลัก:
+Capacity_Data
+1 แถว = 1 Step
+รองรับ Part เดียวหลาย Process และ Process เดียวหลาย Step
+
+Columns:
+Part No. | Part Name | Department | Process | Step | Machine | CT (sec/pc) | Output/Cycle | Efficiency % | Working Hours/Shift | Shifts/Day | Status | Remark
+
+เวลาแก้ Part / Process / Step / Machine / CT ใน Google Sheet ไม่ต้องอัป GitHub ใหม่
+กด Refresh Data ที่หน้าเว็บเพื่อดึงข้อมูลล่าสุด
